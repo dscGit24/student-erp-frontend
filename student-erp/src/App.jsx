@@ -4,6 +4,7 @@ import Students from "./pages/Students";
 import StudentDetails from "./pages/StudentDetails";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Courses from "./pages/Courses";
 
 function App() {
   return (
@@ -23,8 +24,9 @@ function App() {
           }
         >
           <Route path="students" element={<Students />} />
-          <Route path="students/:id" element={<StudentDetails />} />
+          {/* <Route path="students/:id" element={<StudentDetails />} /> */}
           <Route path="students/edit/:id" element={<Students />} />
+          <Route path="courses" element={<Courses />} />
         </Route>
       </Routes>
     </BrowserRouter>

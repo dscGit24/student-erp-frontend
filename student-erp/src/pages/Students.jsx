@@ -10,13 +10,14 @@ function Students() {
   const navigate = useNavigate();
   const [isEdit, setIsEdit] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [courses, setCourses] = useState([]);
 
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     enrollmentNumber: "",
-    course: "",
+    course: null,
     department: "",
     phone: "",
     aadharNumber: "",
@@ -29,13 +30,20 @@ function Students() {
 
   useEffect(() => {
     fetchStudents();
+    fetchCourses();
   }, []);
+
+  const fetchCourses = async () => {
+    const res = await axios.get("http://localhost:8080/api/courses");
+    setCourses(res.data.filter((c) => c.active)); // optional: only active
+  };
 
   useEffect(() => {
     if (students.id) {
       axios.get(`http://localhost:8080/api/students/${id}`).then((res) => {
         setForm({
           ...res.data,
+          course: res.data.course ? { id: res.data.course.id } : null,
           dateOfBirth: res.data.dateOfBirth
             ? res.data.dateOfBirth.substring(0, 10)
             : "", // format date for input
@@ -54,7 +62,7 @@ function Students() {
   };
 
   const deleteStudent = async (id) => {
-    await axios.delete(`http://localhost:8080/api/students/${id}`);
+    await axios.patch(`http://localhost:8080/api/students/${id}/status`);
     fetchStudents();
   };
 
@@ -63,6 +71,7 @@ function Students() {
 
     const payload = {
       ...form,
+      course: form.course ? { id: form.course.id } : null,
       dateOfBirth: form.dateOfBirth || null,
     };
 
@@ -179,7 +188,7 @@ function Students() {
                 </td>
 
                 <td>{s.enrollmentNumber}</td>
-                <td>{s.course}</td>
+                <td>{s.course.courseName}</td>
                 <td>{s.department}</td>
                 <td>{s.phone}</td>
                 <td>{s.aadharNumber}</td>
@@ -210,6 +219,7 @@ function Students() {
                     onClick={() => {
                       setForm({
                         ...s,
+                        course: s.course ? { id: s.course.id } : null,
                         dateOfBirth: s.dateOfBirth
                           ? s.dateOfBirth.substring(0, 10)
                           : "",
@@ -220,7 +230,9 @@ function Students() {
                     }}
                   />
                   <FiTrash2
-                    className="cursor-pointer hover:text-red-600"
+                    className={`cursor-pointer ${
+                      s.deleted ? "text-green-600" : "text-red-600"
+                    }`}
                     onClick={() => handleDelete(s.id)}
                   />
                 </td>
@@ -290,13 +302,23 @@ function Students() {
               {/* Course */}
               <div>
                 <label className="text-sm">Course</label>
-                <input
-                  type="text"
-                  placeholder="Course"
+                <select
                   className="w-full p-2 mt-1 rounded-md border"
-                  value={form.course || ""}
-                  onChange={(e) => setForm({ ...form, course: e.target.value })}
-                />
+                  value={form.course?.id || ""}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      course: { id: e.target.value },
+                    })
+                  }
+                >
+                  <option value="">Select Course</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.courseName}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Department */}
