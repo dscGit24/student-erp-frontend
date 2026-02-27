@@ -17,6 +17,22 @@ function Sidebar() {
         <Link to="/dashboard/courses" className="block hover:text-gray-200">
           Courses
         </Link>
+
+        <Link to="/dashboard/faculty" className="block hover:text-gray-200">
+          Faculty
+        </Link>
+
+        <Link to="/dashboard/departments" className="block hover:text-gray-200">
+          Departments
+        </Link>
+
+        <Link to="/dashboard/finance" className="block hover:text-gray-200">
+          Finance
+        </Link>
+
+        <Link to="/dashboard/payments" className="block hover:text-gray-200">
+          Payments
+        </Link>
       </nav>
     </div>
   );

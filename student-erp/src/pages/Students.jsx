@@ -7,10 +7,10 @@ function Students() {
   const [students, setStudents] = useState([]);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const navigate = useNavigate();
   const [isEdit, setIsEdit] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [courses, setCourses] = useState([]);
+  const [departments, setDepartments] = useState([]);
 
   const [form, setForm] = useState({
     firstName: "",
@@ -18,19 +18,20 @@ function Students() {
     email: "",
     enrollmentNumber: "",
     course: null,
-    department: "",
+    department: null,
     phone: "",
     aadharNumber: "",
     gender: "",
     dateOfBirth: "",
     address: "",
-    deleted: false,
+    active: true,
     photo: "",
   });
 
   useEffect(() => {
     fetchStudents();
     fetchCourses();
+    fetchDepartments();
   }, []);
 
   const fetchCourses = async () => {
@@ -44,6 +45,7 @@ function Students() {
         setForm({
           ...res.data,
           course: res.data.course ? { id: res.data.course.id } : null,
+          department: res.data.department ? { id: res.data.department.id } : null,
           dateOfBirth: res.data.dateOfBirth
             ? res.data.dateOfBirth.substring(0, 10)
             : "", // format date for input
@@ -61,9 +63,14 @@ function Students() {
     setStudents(res.data);
   };
 
-  const deleteStudent = async (id) => {
+  const handleToggle = async (id) => {
     await axios.patch(`http://localhost:8080/api/students/${id}/status`);
     fetchStudents();
+  };
+
+  const fetchDepartments = async () => {
+    const res = await axios.get("http://localhost:8080/api/departments");
+    setDepartments(res.data.filter((d) => d.active)); // only active
   };
 
   const handleSubmit = async (e) => {
@@ -72,6 +79,7 @@ function Students() {
     const payload = {
       ...form,
       course: form.course ? { id: form.course.id } : null,
+      department: form.department ? { id: form.department.id } : null,
       dateOfBirth: form.dateOfBirth || null,
     };
 
@@ -104,9 +112,13 @@ function Students() {
       .includes(search.toLowerCase()),
   );
 
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this student?")) {
-      deleteStudent(id);
+  const handleToggleConfirm = (student) => {
+    const message = student.active
+      ? "Deactivate this student?"
+      : "Activate this student?";
+
+    if (window.confirm(message)) {
+      handleToggle(student.id);
     }
   };
 
@@ -197,13 +209,13 @@ function Students() {
 
                 {/* STATUS */}
                 <td>
-                  {s.deleted ? (
-                    <span className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-md">
-                      Inactive
-                    </span>
-                  ) : (
+                  {s.active ? (
                     <span className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-md">
                       Active
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-md">
+                      Inactive
                     </span>
                   )}
                 </td>
@@ -231,9 +243,9 @@ function Students() {
                   />
                   <FiTrash2
                     className={`cursor-pointer ${
-                      s.deleted ? "text-green-600" : "text-red-600"
+                      s.active ? "text-green-600" : "text-red-600"
                     }`}
-                    onClick={() => handleDelete(s.id)}
+                    onClick={() => handleToggleConfirm(s)}
                   />
                 </td>
               </tr>
@@ -324,15 +336,23 @@ function Students() {
               {/* Department */}
               <div>
                 <label className="text-sm">Department</label>
-                <input
-                  type="text"
-                  placeholder="Department"
+                <select
                   className="w-full p-2 mt-1 rounded-md border"
-                  value={form.department || ""}
+                  value={form.department?.id || ""}
                   onChange={(e) =>
-                    setForm({ ...form, department: e.target.value })
+                    setForm({
+                      ...form,
+                      department: { id: e.target.value },
+                    })
                   }
-                />
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Phone */}
@@ -395,9 +415,12 @@ function Students() {
                 <label className="text-sm">Status</label>
                 <select
                   className="w-full p-2 mt-1 rounded-md border"
-                  value={form.deleted === false ? "Active" : "Inactive"}
+                  value={form.active ? "Active" : "Inactive"}
                   onChange={(e) =>
-                    setForm({ ...form, deleted: e.target.value === "false" })
+                    setForm({
+                      ...form,
+                      active: e.target.value === "Active",
+                    })
                   }
                 >
                   <option>Active</option>

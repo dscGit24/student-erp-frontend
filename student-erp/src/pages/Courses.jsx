@@ -7,19 +7,27 @@ function Courses() {
   const [showWarning, setShowWarning] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [showInactive, setShowInactive] = useState(true);
+  const [departments, setDepartments] = useState([]);
 
   const emptyForm = {
     courseName: "",
     courseCode: "",
     duration: "",
     description: "",
+    department: null,
     active: true,
   };
 
   const [form, setForm] = useState(emptyForm);
 
+  const displayedCourses = showInactive
+    ? courses
+    : courses.filter((c) => c.active);
+
   useEffect(() => {
     fetchCourses();
+    fetchDepartments();
   }, []);
 
   const fetchCourses = async () => {
@@ -27,13 +35,25 @@ function Courses() {
     setCourses(res.data);
   };
 
+  const fetchDepartments = async () => {
+    const res = await axios.get("http://localhost:8080/api/departments");
+    setDepartments(res.data.filter((d) => d.active));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (isEdit) {
-      await axios.put(`http://localhost:8080/api/courses/${selectedId}`, form);
+      const payload = {
+        ...form,
+        department: form.department ? { id: form.department.id } : null,
+      };
+      await axios.put(
+        `http://localhost:8080/api/courses/${selectedId}`,
+        payload,
+      );
     } else {
-      await axios.post("http://localhost:8080/api/courses", form);
+      await axios.post("http://localhost:8080/api/courses", payload);
     }
 
     setShowModal(false);
@@ -91,13 +111,15 @@ function Courses() {
               </span>
             </div>
 
-            <p className="text-sm text-gray-600 mt-4 min-h-[40px]">
+            <p className="text-sm text-gray-500 min-h-[40px]">
               {c.description}
             </p>
 
+            <p className="text-sm text-gray-500">{c.department?.name}</p>
+
             <div className="mt-4 text-sm text-gray-600 space-y-1">
               <div>
-                Students Enrolled:{" "}
+                Students Enrolled: {console.log(c.studentCount)}
                 <span className="font-semibold">{c.studentCount}</span>
               </div>
               <div>
@@ -116,6 +138,7 @@ function Courses() {
                     courseCode: c.courseCode,
                     duration: c.duration,
                     description: c.description,
+                    department: c.department ? { id: c.department.id } : null,
                     active: c.active,
                   });
                   setSelectedId(c.id);
@@ -209,6 +232,24 @@ function Courses() {
                 onChange={(e) => setForm({ ...form, duration: e.target.value })}
               />
 
+              <select
+                className="w-full p-3 border border-gray-300 rounded-lg"
+                value={form.department?.id || ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    department: { id: e.target.value },
+                  })
+                }
+              >
+                <option value="">Select Department</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+
               <textarea
                 placeholder="Description"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62]"
@@ -227,9 +268,11 @@ function Courses() {
                 <button
                   type="button"
                   onClick={() => {
-                    const enrolled =
-                      courses.find((course) => course.id === form.id)
-                        ?.studentCount || 0;
+                    const selectedCourse = courses.find(
+                      (course) => course.id === selectedId,
+                    );
+
+                    const enrolled = selectedCourse?.studentCount || 0;
 
                     if (form.active && enrolled > 0) {
                       setShowWarning(true);
@@ -298,7 +341,7 @@ function Courses() {
               >
                 Okay
               </button>
-              <button
+              {/* <button
                 onClick={() => {
                   toggleStatusDirect(selectedId);
                   setShowWarning(false);
@@ -306,7 +349,7 @@ function Courses() {
                 className="px-4 py-2 bg-red-500 text-white rounded-md"
               >
                 Deactivate Anyway
-              </button>
+              </button> */}
             </div>
           </div>
         </div>

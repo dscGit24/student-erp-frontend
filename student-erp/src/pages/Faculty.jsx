@@ -7,13 +7,14 @@ function Faculty() {
   const [showModal, setShowModal] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [departments, setDepartments] = useState([]);
 
   const emptyForm = {
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
-    department: "",
+    department: null,
     experience: "",
     active: true,
   };
@@ -22,26 +23,45 @@ function Faculty() {
 
   useEffect(() => {
     fetchFaculty();
+    fetchDepartments();
   }, []);
 
   const fetchFaculty = async () => {
     const res = await axios.get("http://localhost:8080/api/faculties");
+    console.log(res.data);
+    console.log("Faculty state:", faculty);
+    console.log("Is faculty array?", Array.isArray(faculty));
     setFaculty(res.data);
+  };
+
+  const fetchDepartments = async () => {
+    const res = await axios.get("http://localhost:8080/api/departments");
+    console.log("Departments:", res.data);
+    setDepartments(
+      Array.isArray(res.data) ? res.data.filter((d) => d.active) : [],
+    );
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const payload = {
+      ...form,
+      department: form.department ? { id: form.department.id } : null,
+    };
+
     if (isEdit) {
       await axios.put(
         `http://localhost:8080/api/faculties/${selectedId}`,
-        form
+        payload,
+        {
+          headers: { "Content-Type": "application/json" },
+        },
       );
     } else {
-      await axios.post(
-        "http://localhost:8080/api/faculties",
-        form
-      );
+      await axios.post("http://localhost:8080/api/faculties", payload, {
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     setShowModal(false);
@@ -51,24 +71,22 @@ function Faculty() {
   };
 
   const toggleStatus = async (id) => {
-    await axios.patch(
-      `http://localhost:8080/api/faculties/${id}/status`
-    );
+    await axios.patch(`http://localhost:8080/api/faculties/${id}/status`);
     fetchFaculty();
   };
 
   const filtered = faculty.filter((f) =>
-    `${f.firstName} ${f.lastName} ${f.email} ${f.department}`
+    `${f.firstName} ${f.lastName} ${f.email}}`
       .toLowerCase()
-      .includes(search.toLowerCase())
+      .includes(search.toLowerCase()),
   );
 
-  // 📊 Stats
+  // // 📊 Stats
   const totalFaculty = faculty.length;
   const activeFaculty = faculty.filter((f) => f.active).length;
   const totalCourses = faculty.reduce(
     (sum, f) => sum + (f.courses ? f.courses.length : 0),
-    0
+    0,
   );
   const avgExperience =
     faculty.length > 0
@@ -147,14 +165,12 @@ function Faculty() {
                       <div className="font-medium">
                         {f.firstName} {f.lastName}
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {f.email}
-                      </div>
+                      <div className="text-sm text-gray-500">{f.email}</div>
                     </div>
                   </div>
                 </td>
 
-                <td>{f.department}</td>
+                <td>{f.department?.name || "N/A"}</td>
                 <td>{f.experience} yrs</td>
                 <td>{f.courses ? f.courses.length : 0} courses</td>
 
@@ -173,7 +189,12 @@ function Faculty() {
                 <td className="flex gap-3 mt-6">
                   <button
                     onClick={() => {
-                      setForm(f);
+                      setForm({
+                        ...f,
+                        department: f.department
+                          ? { id: f.department.id }
+                          : null,
+                      });
                       setSelectedId(f.id);
                       setIsEdit(true);
                       setShowModal(true);
@@ -185,9 +206,13 @@ function Faculty() {
 
                   <button
                     onClick={() => toggleStatus(f.id)}
-                    className="text-sm bg-gray-200 px-3 py-1 rounded-md hover:bg-gray-300"
+                    className={`text-sm px-3 py-1 rounded-md text-white ${
+                      f.active
+                        ? "bg-red-500 hover:bg-red-600"
+                        : "bg-green-500 hover:bg-green-600"
+                    }`}
                   >
-                    Toggle
+                    {f.active ? "Deactivate" : "Activate"}
                   </button>
                 </td>
               </tr>
@@ -218,37 +243,40 @@ function Faculty() {
                 placeholder="Last Name"
                 className="w-full p-3 border rounded-lg"
                 value={form.lastName}
-                onChange={(e) =>
-                  setForm({ ...form, lastName: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
               />
 
               <input
                 placeholder="Email"
                 className="w-full p-3 border rounded-lg"
                 value={form.email}
-                onChange={(e) =>
-                  setForm({ ...form, email: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
 
               <input
                 placeholder="Phone"
                 className="w-full p-3 border rounded-lg"
                 value={form.phone}
-                onChange={(e) =>
-                  setForm({ ...form, phone: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
 
-              <input
-                placeholder="Department"
+              <select
                 className="w-full p-3 border rounded-lg"
-                value={form.department}
+                value={form.department?.id || ""}
                 onChange={(e) =>
-                  setForm({ ...form, department: e.target.value })
+                  setForm({
+                    ...form,
+                    department: { id: e.target.value },
+                  })
                 }
-              />
+              >
+                <option value="">Select Department</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
 
               <input
                 type="number"
