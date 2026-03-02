@@ -200,7 +200,7 @@ function Students() {
                 </td>
 
                 <td>{s.enrollmentNumber}</td>
-                <td>{s.course.courseName}</td>
+                <td>{s.course?.courseName}</td>
                 <td>{s.department}</td>
                 <td>{s.phone}</td>
                 <td>{s.aadharNumber}</td>
@@ -346,6 +346,7 @@ function Students() {
                     })
                   }
                 >
+                  {console.log(form.department)}
                   <option value="">Select Department</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>

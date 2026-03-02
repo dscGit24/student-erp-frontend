@@ -1,7 +1,6 @@
 function Navbar() {
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
-    navigate("/");
   };
 
   return (

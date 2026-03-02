@@ -21,11 +21,6 @@ function Faculty() {
 
   const [form, setForm] = useState(emptyForm);
 
-  useEffect(() => {
-    fetchFaculty();
-    fetchDepartments();
-  }, []);
-
   const fetchFaculty = async () => {
     const res = await axios.get("http://localhost:8080/api/faculties");
     console.log(res.data);
@@ -36,7 +31,7 @@ function Faculty() {
 
   const fetchDepartments = async () => {
     const res = await axios.get("http://localhost:8080/api/departments");
-    console.log("Departments:", res.data);
+    // console.log("Departments:", res.data);
     setDepartments(
       Array.isArray(res.data) ? res.data.filter((d) => d.active) : [],
     );
@@ -75,29 +70,34 @@ function Faculty() {
     fetchFaculty();
   };
 
-  const filtered = faculty.filter((f) =>
-    `${f.firstName} ${f.lastName} ${f.email}}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
+  // const filtered = Array.isArray(faculty) ? faculty.filter((f) =>
+  //   `${f.firstName} ${f.lastName} ${f.email}`
+  //     .toLowerCase()
+  //     .includes(search.toLowerCase()),
+  // ) : [];
 
   // // 📊 Stats
-  const totalFaculty = faculty.length;
-  const activeFaculty = faculty.filter((f) => f.active).length;
-  const totalCourses = faculty.reduce(
-    (sum, f) => sum + (f.courses ? f.courses.length : 0),
-    0,
-  );
-  const avgExperience =
-    faculty.length > 0
-      ? (
-          faculty.reduce((sum, f) => sum + (f.experience || 0), 0) /
-          faculty.length
-        ).toFixed(1)
-      : 0;
+  // const totalFaculty = faculty.length;
+  // const activeFaculty = faculty.filter((f) => f.active).length;
+  // const totalCourses = faculty.reduce(
+  //   (sum, f) => sum + (f.courses ? f.courses.length : 0),
+  //   0,
+  // );
+  // const avgExperience =
+  //   faculty.length > 0
+  //     ? (
+  //         faculty.reduce((sum, f) => sum + (f.experience || 0), 0) /
+  //         faculty.length
+  //       ).toFixed(1)
+  //     : 0;
 
   const getInitials = (f, l) =>
     `${f?.charAt(0) || ""}${l?.charAt(0) || ""}`.toUpperCase();
+
+  useEffect(() => {
+    fetchFaculty();
+    fetchDepartments();
+  }, []);
 
   return (
     <div className="bg-[#e8f1f3] min-h-screen p-6">
@@ -123,21 +123,21 @@ function Faculty() {
       </div>
 
       {/* 📊 STATS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <StatCard title="Total Faculty" value={totalFaculty} />
         <StatCard title="Active Faculty" value={activeFaculty} />
         <StatCard title="Total Courses Assigned" value={totalCourses} />
         <StatCard title="Avg Experience" value={`${avgExperience} yrs`} />
-      </div>
+      </div> */}
 
       {/* 🔎 SEARCH */}
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-4">
+      {/* <div className="bg-white p-4 rounded-xl shadow-sm mb-4">
         <input
           placeholder="Search by name, email or department..."
           className="w-full p-3 border rounded-lg focus:outline-none"
           onChange={(e) => setSearch(e.target.value)}
         />
-      </div>
+      </div> */}
 
       {/* 📋 TABLE */}
       <div className="bg-white rounded-xl shadow-sm p-5">
@@ -154,7 +154,7 @@ function Faculty() {
           </thead>
 
           <tbody>
-            {filtered.map((f) => (
+            {faculty.map((f) => (
               <tr key={f.id} className="border-b hover:bg-gray-50">
                 <td className="py-4">
                   <div className="flex items-center gap-3">

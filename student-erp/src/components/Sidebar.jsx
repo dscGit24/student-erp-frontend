@@ -25,14 +25,14 @@ function Sidebar() {
         <Link to="/dashboard/departments" className="block hover:text-gray-200">
           Departments
         </Link>
-
+{/* 
         <Link to="/dashboard/finance" className="block hover:text-gray-200">
           Finance
         </Link>
 
         <Link to="/dashboard/payments" className="block hover:text-gray-200">
           Payments
-        </Link>
+        </Link> */}
       </nav>
     </div>
   );

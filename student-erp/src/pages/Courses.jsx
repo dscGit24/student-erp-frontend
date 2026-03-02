@@ -43,11 +43,12 @@ function Courses() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (isEdit) {
-      const payload = {
+    const payload = {
         ...form,
         department: form.department ? { id: form.department.id } : null,
       };
+
+    if (isEdit) {
       await axios.put(
         `http://localhost:8080/api/courses/${selectedId}`,
         payload,
