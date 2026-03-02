@@ -14,7 +14,7 @@ function Faculty() {
     lastName: "",
     email: "",
     phone: "",
-    department: null,
+    department: 0,
     experience: "",
     active: true,
   };
@@ -23,7 +23,7 @@ function Faculty() {
 
   const fetchFaculty = async () => {
     const res = await axios.get("http://localhost:8080/api/faculties");
-    console.log(res.data);
+    console.log(res);
     console.log("Faculty state:", faculty);
     console.log("Is faculty array?", Array.isArray(faculty));
     setFaculty(res.data);
@@ -31,7 +31,7 @@ function Faculty() {
 
   const fetchDepartments = async () => {
     const res = await axios.get("http://localhost:8080/api/departments");
-    // console.log("Departments:", res.data);
+    console.log("Departments:", res.data);
     setDepartments(
       Array.isArray(res.data) ? res.data.filter((d) => d.active) : [],
     );
@@ -40,9 +40,10 @@ function Faculty() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const { department, ...rest } = form;
     const payload = {
-      ...form,
-      department: form.department ? { id: form.department.id } : null,
+      ...rest,
+      departmentId: department ? Number(department.id) : null,
     };
 
     if (isEdit) {
@@ -54,6 +55,7 @@ function Faculty() {
         },
       );
     } else {
+      console.log(payload);
       await axios.post("http://localhost:8080/api/faculties", payload, {
         headers: { "Content-Type": "application/json" },
       });

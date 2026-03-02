@@ -17,8 +17,8 @@ function Students() {
     lastName: "",
     email: "",
     enrollmentNumber: "",
-    course: null,
-    department: null,
+    course: 0,
+    department: 0,
     phone: "",
     aadharNumber: "",
     gender: "",
@@ -44,8 +44,8 @@ function Students() {
       axios.get(`http://localhost:8080/api/students/${id}`).then((res) => {
         setForm({
           ...res.data,
-          course: res.data.course ? { id: res.data.course.id } : null,
-          department: res.data.department ? { id: res.data.department.id } : null,
+          courseId: res.data.course ? Number(res.data.course.id) : 0,
+          departmentId: res.data.department ? Number(res.data.department.id) : 0,
           dateOfBirth: res.data.dateOfBirth
             ? res.data.dateOfBirth.substring(0, 10)
             : "", // format date for input
@@ -78,8 +78,8 @@ function Students() {
 
     const payload = {
       ...form,
-      course: form.course ? { id: form.course.id } : null,
-      department: form.department ? { id: form.department.id } : null,
+      courseId: form.course ? Number(form.course.id) : 0,
+      departmentId: form.department ? Number(form.department.id) : 0,
       dateOfBirth: form.dateOfBirth || null,
     };
 
@@ -201,7 +201,7 @@ function Students() {
 
                 <td>{s.enrollmentNumber}</td>
                 <td>{s.course?.courseName}</td>
-                <td>{s.department}</td>
+                <td>{s.department?.name || "N/A"}</td>
                 <td>{s.phone}</td>
                 <td>{s.aadharNumber}</td>
                 <td>{s.gender}</td>

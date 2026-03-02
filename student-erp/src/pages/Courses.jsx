@@ -15,7 +15,7 @@ function Courses() {
     courseCode: "",
     duration: "",
     description: "",
-    department: null,
+    department: 0,
     active: true,
   };
 
@@ -45,7 +45,7 @@ function Courses() {
 
     const payload = {
         ...form,
-        department: form.department ? { id: form.department.id } : null,
+        departmentId: form.department ? Number(form.department.id) : 0,
       };
 
     if (isEdit) {
