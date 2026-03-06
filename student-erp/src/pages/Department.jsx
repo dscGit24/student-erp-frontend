@@ -13,7 +13,7 @@ function Department() {
     name: "",
     code: "",
     description: "",
-    hod: null,
+    hod: 0,
     active: true,
   };
 
@@ -31,18 +31,22 @@ function Department() {
 
   const fetchFaculty = async () => {
     const res = await axios.get("http://localhost:8080/api/faculties");
-    setFaculty(res.data.filter(f => f.active));
+    console.log(res.data);
+    console.log("Faculty state:", faculty);
+    console.log("Is faculty array?", Array.isArray(faculty));
+    setFaculty(res.data);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     const payload = {
-      ...form,
-      hod: form.hod ? { id: form.hod.id } : null,
+      ...form
+      // hodId: form.hod ? Number(form.hod.id) : 0,
     };
 
     if (isEdit) {
+      console.log(payload);
       await axios.put(
         `http://localhost:8080/api/departments/${selectedId}`,
         payload
@@ -93,7 +97,8 @@ function Department() {
             <tr>
               <th className="py-3">Name</th>
               <th>Code</th>
-              <th>HOD</th>
+              <th>Description</th>
+              {/* <th>HOD</th> */}
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -105,11 +110,12 @@ function Department() {
 
                 <td className="py-3">{d.name}</td>
                 <td>{d.code}</td>
-                <td>
+                <td>{d.description}</td>
+                {/* <td>
                   {d.hod
                     ? `${d.hod.firstName} ${d.hod.lastName}`
                     : "Not Assigned"}
-                </td>
+                </td> */}
 
                 <td>
                   <span
@@ -127,8 +133,8 @@ function Department() {
                   <button
                     onClick={() => {
                       setForm({
-                        ...d,
-                        hod: d.hod ? { id: d.hod.id } : null,
+                        ...d
+                        // hod: d.hod ? { id: d.hod.id } : 0,
                       });
                       setSelectedId(d.id);
                       setIsEdit(true);
@@ -192,13 +198,13 @@ function Department() {
               />
 
               {/* HOD Dropdown */}
-              <select
+              {/* <select
                 className="w-full p-3 border rounded-lg"
-                value={form.hod?.id || ""}
+                value={form.hod?.id || 0}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    hod: { id: e.target.value },
+                    hod: e.target.value ? Number(e.target.value) : 0,
                   })
                 }
               >
@@ -208,7 +214,7 @@ function Department() {
                     {f.firstName} {f.lastName}
                   </option>
                 ))}
-              </select>
+              </select> */}
 
               <div className="flex justify-end gap-3">
                 <button

@@ -14,7 +14,7 @@ function Faculty() {
     lastName: "",
     email: "",
     phone: "",
-    department: 0,
+    departmentId: 0,
     experience: "",
     active: true,
   };
@@ -23,7 +23,7 @@ function Faculty() {
 
   const fetchFaculty = async () => {
     const res = await axios.get("http://localhost:8080/api/faculties");
-    console.log(res);
+    console.log(res.data);
     console.log("Faculty state:", faculty);
     console.log("Is faculty array?", Array.isArray(faculty));
     setFaculty(res.data);
@@ -31,7 +31,7 @@ function Faculty() {
 
   const fetchDepartments = async () => {
     const res = await axios.get("http://localhost:8080/api/departments");
-    console.log("Departments:", res.data);
+    // console.log("Departments:", res.data);
     setDepartments(
       Array.isArray(res.data) ? res.data.filter((d) => d.active) : [],
     );
@@ -40,13 +40,13 @@ function Faculty() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const { department, ...rest } = form;
     const payload = {
-      ...rest,
-      departmentId: department ? Number(department.id) : null,
+      ...form,
+      departmentId: form.departmentId ? Number(form.departmentId) : 0,
     };
 
     if (isEdit) {
+      console.log(payload);
       await axios.put(
         `http://localhost:8080/api/faculties/${selectedId}`,
         payload,
@@ -55,7 +55,6 @@ function Faculty() {
         },
       );
     } else {
-      console.log(payload);
       await axios.post("http://localhost:8080/api/faculties", payload, {
         headers: { "Content-Type": "application/json" },
       });
@@ -72,27 +71,6 @@ function Faculty() {
     fetchFaculty();
   };
 
-  // const filtered = Array.isArray(faculty) ? faculty.filter((f) =>
-  //   `${f.firstName} ${f.lastName} ${f.email}`
-  //     .toLowerCase()
-  //     .includes(search.toLowerCase()),
-  // ) : [];
-
-  // // 📊 Stats
-  // const totalFaculty = faculty.length;
-  // const activeFaculty = faculty.filter((f) => f.active).length;
-  // const totalCourses = faculty.reduce(
-  //   (sum, f) => sum + (f.courses ? f.courses.length : 0),
-  //   0,
-  // );
-  // const avgExperience =
-  //   faculty.length > 0
-  //     ? (
-  //         faculty.reduce((sum, f) => sum + (f.experience || 0), 0) /
-  //         faculty.length
-  //       ).toFixed(1)
-  //     : 0;
-
   const getInitials = (f, l) =>
     `${f?.charAt(0) || ""}${l?.charAt(0) || ""}`.toUpperCase();
 
@@ -107,9 +85,6 @@ function Faculty() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-semibold">Faculty</h2>
-          <p className="text-gray-500 text-sm">
-            Manage teaching staff and assignments
-          </p>
         </div>
 
         <button
@@ -124,23 +99,6 @@ function Faculty() {
         </button>
       </div>
 
-      {/* 📊 STATS */}
-      {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <StatCard title="Total Faculty" value={totalFaculty} />
-        <StatCard title="Active Faculty" value={activeFaculty} />
-        <StatCard title="Total Courses Assigned" value={totalCourses} />
-        <StatCard title="Avg Experience" value={`${avgExperience} yrs`} />
-      </div> */}
-
-      {/* 🔎 SEARCH */}
-      {/* <div className="bg-white p-4 rounded-xl shadow-sm mb-4">
-        <input
-          placeholder="Search by name, email or department..."
-          className="w-full p-3 border rounded-lg focus:outline-none"
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div> */}
-
       {/* 📋 TABLE */}
       <div className="bg-white rounded-xl shadow-sm p-5">
         <table className="w-full">
@@ -149,11 +107,11 @@ function Faculty() {
               <th className="py-3">Faculty</th>
               <th>Department</th>
               <th>Experience</th>
-              <th>Courses</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
+          
 
           <tbody>
             {faculty.map((f) => (
@@ -172,9 +130,8 @@ function Faculty() {
                   </div>
                 </td>
 
-                <td>{f.department?.name || "N/A"}</td>
+                <td>{f.departmentName}</td>
                 <td>{f.experience} yrs</td>
-                <td>{f.courses ? f.courses.length : 0} courses</td>
 
                 <td>
                   <span
@@ -193,9 +150,9 @@ function Faculty() {
                     onClick={() => {
                       setForm({
                         ...f,
-                        department: f.department
-                          ? { id: f.department.id }
-                          : null,
+                        departmentId: f.departmentId
+                          ? Number(f.departmentId)
+                          : 0,
                       });
                       setSelectedId(f.id);
                       setIsEdit(true);
@@ -264,11 +221,11 @@ function Faculty() {
 
               <select
                 className="w-full p-3 border rounded-lg"
-                value={form.department?.id || ""}
+                value={form.departmentId || 0}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    department: { id: e.target.value },
+                    departmentId: Number(e.target.value),
                   })
                 }
               >

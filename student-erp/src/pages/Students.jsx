@@ -17,8 +17,8 @@ function Students() {
     lastName: "",
     email: "",
     enrollmentNumber: "",
-    course: 0,
-    department: 0,
+    course: null,
+    department: null,
     phone: "",
     aadharNumber: "",
     gender: "",
@@ -39,24 +39,10 @@ function Students() {
     setCourses(res.data.filter((c) => c.active)); // optional: only active
   };
 
-  useEffect(() => {
-    if (students.id) {
-      axios.get(`http://localhost:8080/api/students/${id}`).then((res) => {
-        setForm({
-          ...res.data,
-          courseId: res.data.course ? Number(res.data.course.id) : 0,
-          departmentId: res.data.department ? Number(res.data.department.id) : 0,
-          dateOfBirth: res.data.dateOfBirth
-            ? res.data.dateOfBirth.substring(0, 10)
-            : "", // format date for input
-        });
-
-        setSelectedId(res.data.id);
-        setIsEdit(true);
-        setShowModal(true);
-      });
-    }
-  }, []);
+  const fetchDepartments = async () => {
+    const res = await axios.get("http://localhost:8080/api/departments");
+    setDepartments(res.data.filter((d) => d.active)); // only active
+  };
 
   const fetchStudents = async () => {
     const res = await axios.get("http://localhost:8080/api/students");
@@ -66,11 +52,6 @@ function Students() {
   const handleToggle = async (id) => {
     await axios.patch(`http://localhost:8080/api/students/${id}/status`);
     fetchStudents();
-  };
-
-  const fetchDepartments = async () => {
-    const res = await axios.get("http://localhost:8080/api/departments");
-    setDepartments(res.data.filter((d) => d.active)); // only active
   };
 
   const handleSubmit = async (e) => {
@@ -92,6 +73,9 @@ function Students() {
         },
       );
     } else {
+      console.log(payload);
+      console.log(payload.courseId);
+      console.log(payload.departmentId);
       await axios.post("http://localhost:8080/api/students", payload, {
         headers: { "Content-Type": "application/json" },
       });
@@ -128,9 +112,6 @@ function Students() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-semibold">Students</h2>
-          <p className="text-gray-500 text-sm">
-            Manage student information and records
-          </p>
         </div>
 
         <button
@@ -200,8 +181,8 @@ function Students() {
                 </td>
 
                 <td>{s.enrollmentNumber}</td>
-                <td>{s.course?.courseName}</td>
-                <td>{s.department?.name || "N/A"}</td>
+                <td>{s.courseName}</td>
+                <td>{s.departmentName}</td>
                 <td>{s.phone}</td>
                 <td>{s.aadharNumber}</td>
                 <td>{s.gender}</td>
@@ -324,6 +305,7 @@ function Students() {
                     })
                   }
                 >
+                  {/* {console.log(form.course)} */}
                   <option value="">Select Course</option>
                   {courses.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -346,7 +328,7 @@ function Students() {
                     })
                   }
                 >
-                  {console.log(form.department)}
+                  {/* {console.log(form.department)} */}
                   <option value="">Select Department</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>

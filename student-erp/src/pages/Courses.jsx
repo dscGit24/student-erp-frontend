@@ -1,29 +1,24 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { FiPlus, FiEdit2, FiToggleLeft, FiToggleRight, FiX } from "react-icons/fi";
+import { GiBookshelf } from "react-icons/gi";
 
 function Courses() {
   const [courses, setCourses] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [showWarning, setShowWarning] = useState(false);
-  const [isEdit, setIsEdit] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
-  const [showInactive, setShowInactive] = useState(true);
+  const [selectedCourse, setSelectedCourse] = useState(null);
   const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const emptyForm = {
+  // Form state
+  const [formData, setFormData] = useState({
     courseName: "",
     courseCode: "",
     duration: "",
+    departmentId: "",
     description: "",
-    department: 0,
-    active: true,
-  };
-
-  const [form, setForm] = useState(emptyForm);
-
-  const displayedCourses = showInactive
-    ? courses
-    : courses.filter((c) => c.active);
+    status: "ACTIVE"
+  });
 
   useEffect(() => {
     fetchCourses();
@@ -31,283 +26,361 @@ function Courses() {
   }, []);
 
   const fetchCourses = async () => {
-    const res = await axios.get("http://localhost:8080/api/courses");
-    setCourses(res.data);
+    try {
+      const res = await axios.get("http://localhost:8080/api/courses");
+      setCourses(res.data);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+    }
   };
 
   const fetchDepartments = async () => {
-    const res = await axios.get("http://localhost:8080/api/departments");
-    setDepartments(res.data.filter((d) => d.active));
+    try {
+      const res = await axios.get("http://localhost:8080/api/departments");
+      // Filter only active departments with valid IDs
+      const activeDepts = res.data.filter(d => d.active && d.id != null);
+      setDepartments(activeDepts);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+    }
+  };
+
+  const handleToggleStatus = async (id) => {
+    try {
+      await axios.patch(`http://localhost:8080/api/courses/${id}/status`);
+      fetchCourses();
+    } catch (error) {
+      console.error("Error toggling status:", error);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const payload = {
-        ...form,
-        departmentId: form.department ? Number(form.department.id) : 0,
-      };
-
-    if (isEdit) {
-      await axios.put(
-        `http://localhost:8080/api/courses/${selectedId}`,
-        payload,
-      );
-    } else {
-      await axios.post("http://localhost:8080/api/courses", payload);
+    
+    // Validate department selection
+    if (!formData.departmentId) {
+      alert("Please select a department");
+      return;
     }
 
-    setShowModal(false);
-    setIsEdit(false);
-    setForm(emptyForm);
-    fetchCourses();
+    setLoading(true);
+
+    try {
+      // Create payload matching your backend DTO
+      const payload = {
+        courseName: formData.courseName,
+        courseCode: formData.courseCode,
+        duration: parseInt(formData.duration),
+        departmentId: parseInt(formData.departmentId), // Convert to number
+        description: formData.description || "",
+        active: formData.status === "ACTIVE"
+      };
+
+      console.log("Sending payload:", payload);
+
+      if (selectedCourse) {
+        await axios.put(
+          `http://localhost:8080/api/courses/${selectedCourse.id}`, 
+          payload,
+          {
+            headers: { "Content-Type": "application/json" }
+          }
+        );
+        alert("Course updated successfully!");
+      } else {
+        await axios.post(
+          "http://localhost:8080/api/courses", 
+          payload,
+          {
+            headers: { "Content-Type": "application/json" }
+          }
+        );
+        alert("Course created successfully!");
+      }
+
+      setShowModal(false);
+      resetForm();
+      fetchCourses();
+    } catch (error) {
+      console.error("Error saving course:", error.response?.data || error);
+      
+      // Show specific error message
+      if (error.response?.data?.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else if (error.response?.data?.errors) {
+        // Handle validation errors
+        const errors = Object.values(error.response.data.errors).join("\n");
+        alert(`Validation errors:\n${errors}`);
+      } else {
+        alert("Error saving course. Please check all fields and try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const toggleStatusDirect = async (id) => {
-    await axios.patch(`http://localhost:8080/api/courses/${id}/status`);
-    fetchCourses();
+  const resetForm = () => {
+    setFormData({
+      courseName: "",
+      courseCode: "",
+      duration: "",
+      departmentId: "",
+      description: "",
+      status: "ACTIVE"
+    });
+    setSelectedCourse(null);
   };
 
+  const openEditModal = (course) => {
+    setSelectedCourse(course);
+    setFormData({
+      courseName: course.courseName || "",
+      courseCode: course.courseCode || "",
+      duration: course.duration || "",
+      departmentId: course.department?.id || "",
+      description: course.description || "",
+      status: course.active ? "ACTIVE" : "INACTIVE"
+    });
+    setShowModal(true);
+  };
+
+  // Rest of your component remains the same...
   return (
     <div className="bg-[#e8f1f3] min-h-screen p-6">
-      {/* Header */}
-      <div className="flex justify-between mb-6">
-        <h2 className="text-2xl font-semibold">Courses</h2>
-
+      {/* Header - same as before */}
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-semibold">Courses</h1>
+        </div>
         <button
           onClick={() => {
-            setForm(emptyForm);
-            setIsEdit(false);
+            resetForm();
             setShowModal(true);
           }}
-          className="bg-[#2f5d62] text-white px-5 py-2 rounded-lg hover:bg-[#264b4f]"
+          className="bg-[#2f5d62] text-white px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-[#264b4f] transition shadow-sm"
         >
-          + Add Course
+          <FiPlus className="text-lg" />
+          <span>Add Course</span>
         </button>
       </div>
 
-      {/* Cards */}
+      {/* Courses Grid - same as before */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {courses.map((c) => (
+        {courses.map((course) => (
           <div
-            key={c.id}
-            className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition"
+            key={course.id}
+            className="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-200"
           >
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">
-                  {c.courseName}
-                </h3>
-                <p className="text-sm text-gray-500">{c.courseCode}</p>
+            {/* Course Header */}
+            <div className="p-5 border-b border-gray-100">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-xl font-semibold text-gray-800">{course.courseName}</h3>
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                  {course.active ? 'Active' : 'Inactive'}
+                </span>
               </div>
-
-              <span
-                className={`px-3 py-1 text-xs rounded-full font-medium ${
-                  c.active
-                    ? "bg-green-100 text-green-700"
-                    : "bg-gray-200 text-gray-600"
-                }`}
-              >
-                {c.active ? "Active" : "Inactive"}
-              </span>
+              <p className="text-sm text-gray-500">{course.courseCode}</p>
             </div>
 
-            <p className="text-sm text-gray-500 min-h-[40px]">
-              {c.description}
-            </p>
+            {/* Course Content */}
+            <div className="p-5">
+              <p className="text-gray-600 text-sm mb-4">
+                {course.description || 'No description available'}
+              </p>
 
-            <p className="text-sm text-gray-500">{c.department?.name}</p>
-
-            <div className="mt-4 text-sm text-gray-600 space-y-1">
-              <div>
-                Students Enrolled: {console.log(c.studentCount)}
-                <span className="font-semibold">{c.studentCount}</span>
+              <div className="space-y-2 mb-4">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Students Enrolled:</span>
+                  <span className="font-semibold text-gray-800">{course.studentsEnrolled || 0}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Duration:</span>
+                  <span className="font-semibold text-gray-800">{course.duration || 3} semesters</span>
+                </div>
+                {course.department && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500">Department:</span>
+                    <span className="font-semibold text-gray-800">{course.department.name}</span>
+                  </div>
+                )}
               </div>
-              <div>
-                Duration: <span className="font-semibold">{c.duration}</span>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => openEditModal(course)}
+                  className="flex-1 px-4 py-2 bg-[#2f5d62] text-white rounded-lg hover:bg-[#264b4f] transition text-sm font-medium"
+                >
+                  Manage
+                </button>
+                <button
+                  onClick={() => handleToggleStatus(course.id)}
+                  className={`px-4 py-2 rounded-lg transition text-sm font-medium flex items-center gap-2 ${
+                    course.active
+                      ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
+                      : 'bg-green-50 text-green-600 hover:bg-green-100'
+                  }`}
+                >
+                  {course.active ? (
+                    <>
+                      <FiToggleLeft className="text-lg" />
+                      Deactivate
+                    </>
+                  ) : (
+                    <>
+                      <FiToggleRight className="text-lg" />
+                      Activate
+                    </>
+                  )}
+                </button>
               </div>
-            </div>
-
-            <hr className="my-4" />
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setForm({
-                    id: c.id,
-                    courseName: c.courseName,
-                    courseCode: c.courseCode,
-                    duration: c.duration,
-                    description: c.description,
-                    department: c.department ? { id: c.department.id } : null,
-                    active: c.active,
-                  });
-                  setSelectedId(c.id);
-                  setIsEdit(true);
-                  setShowModal(true);
-                }}
-                className="flex-1 border border-gray-300 py-2 rounded-md text-sm hover:bg-gray-50"
-              >
-                Manage
-              </button>
-
-              <button
-                onClick={() => {
-                  if (c.active && c.studentCount > 0) {
-                    setSelectedId(c.id);
-                    setShowWarning(true);
-                    return;
-                  }
-                  toggleStatusDirect(c.id);
-                }}
-                className={`flex-1 py-2 rounded-md text-sm text-white ${
-                  c.active
-                    ? "bg-red-500 hover:bg-red-600"
-                    : "bg-green-500 hover:bg-green-600"
-                }`}
-              >
-                {c.active ? "Deactivate" : "Activate"}
-              </button>
             </div>
           </div>
         ))}
       </div>
 
-      {/* MAIN MODAL */}
+      {/* Add/Edit Course Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-white w-[580px] rounded-2xl shadow-2xl p-7 relative">
-            <button
-              onClick={() => {
-                setShowModal(false);
-                setIsEdit(false);
-              }}
-              className="absolute top-4 right-5 text-gray-500"
-            >
-              ✕
-            </button>
-
-            <h2 className="text-xl font-semibold text-gray-800 mb-1">
-              {isEdit ? "Manage Course" : "Add Course"}
-            </h2>
-
-            <p className="text-sm text-gray-500 mb-5">
-              {isEdit
-                ? "Update course details and status"
-                : "Create a new course in the system"}
-            </p>
-
-            {isEdit && (
-              <div className="bg-gray-50 p-3 rounded-lg text-sm mb-4">
-                Students Enrolled:
-                <span className="ml-2 font-semibold">
-                  {courses.find((course) => course.id === selectedId)
-                    ?.studentCount || 0}
-                </span>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">
+                  {selectedCourse ? 'Edit Course' : 'Add Course'}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Create a new course in the system
+                </p>
               </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input
-                placeholder="Course Name"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62]"
-                value={form.courseName}
-                onChange={(e) =>
-                  setForm({ ...form, courseName: e.target.value })
-                }
-              />
-
-              <input
-                placeholder="Course Code"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62]"
-                value={form.courseCode}
-                onChange={(e) =>
-                  setForm({ ...form, courseCode: e.target.value })
-                }
-              />
-
-              <input
-                placeholder="Duration"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62]"
-                value={form.duration}
-                onChange={(e) => setForm({ ...form, duration: e.target.value })}
-              />
-
-              <select
-                className="w-full p-3 border border-gray-300 rounded-lg"
-                value={form.department?.id || ""}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    department: { id: e.target.value },
-                  })
-                }
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  resetForm();
+                }}
+                className="text-gray-400 hover:text-gray-600"
               >
-                <option value="">Select Department</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+                <FiX className="text-xl" />
+              </button>
+            </div>
 
-              <textarea
-                placeholder="Description"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62]"
-                value={form.description}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
-              />
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Course Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Course Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62] focus:border-transparent"
+                  placeholder="e.g., Computer Science"
+                  value={formData.courseName}
+                  onChange={(e) => setFormData({...formData, courseName: e.target.value})}
+                />
+              </div>
 
-              {/* SAFE TOGGLE */}
-              <div className="flex items-center justify-between mt-3 bg-gray-50 p-3 rounded-lg">
-                <span className="text-sm font-medium text-gray-700">
-                  Course Status
-                </span>
+              {/* Course Code */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Course Code <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62] focus:border-transparent"
+                  placeholder="e.g., CS101"
+                  value={formData.courseCode}
+                  onChange={(e) => setFormData({...formData, courseCode: e.target.value})}
+                />
+              </div>
 
+              {/* Duration */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Duration (semesters) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62] focus:border-transparent"
+                  placeholder="e.g., 6"
+                  value={formData.duration}
+                  onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                />
+              </div>
+
+              {/* Select Department */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Department <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62] focus:border-transparent"
+                  value={formData.departmentId}
+                  onChange={(e) => setFormData({...formData, departmentId: e.target.value})}
+                >
+                  <option value="">Select a department</option>
+                  {departments.map(dept => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  rows="3"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62] focus:border-transparent"
+                  placeholder="Course description..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                />
+              </div>
+
+              {/* Course Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Course Status <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62] focus:border-transparent"
+                  value={formData.status}
+                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </div>
+
+              {/* Form Buttons */}
+              <div className="flex gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => {
-                    const selectedCourse = courses.find(
-                      (course) => course.id === selectedId,
-                    );
-
-                    const enrolled = selectedCourse?.studentCount || 0;
-
-                    if (form.active && enrolled > 0) {
-                      setShowWarning(true);
-                      return;
-                    }
-
-                    setForm({ ...form, active: !form.active });
+                    setShowModal(false);
+                    resetForm();
                   }}
-                  className={`w-12 h-6 flex items-center rounded-full p-1 transition ${
-                    form.active ? "bg-green-500" : "bg-gray-300"
-                  }`}
-                >
-                  <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition ${
-                      form.active ? "translate-x-6" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border rounded-md"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition font-medium"
+                  disabled={loading}
                 >
                   Cancel
                 </button>
-
                 <button
                   type="submit"
-                  className="bg-[#2f5d62] text-white px-5 py-2 rounded-md hover:bg-[#264b4f]"
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 bg-[#2f5d62] text-white rounded-lg hover:bg-[#264b4f] transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isEdit ? "Update Course" : "Add Course"}
+                  {loading ? 'Saving...' : (selectedCourse ? 'Update Course' : 'Add Course')}
                 </button>
               </div>
             </form>
@@ -315,44 +388,22 @@ function Courses() {
         </div>
       )}
 
-      {/* SAFETY WARNING MODAL */}
-      {showWarning && (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
-          <div className="bg-white w-[420px] rounded-xl shadow-xl p-6">
-            <h3 className="text-lg font-semibold text-red-600 mb-3">
-              Cannot Deactivate Course
-            </h3>
-
-            <p className="text-sm text-gray-600 mb-5">
-              This course has{" "}
-              <span className="font-semibold">
-                {courses.find((course) => course.id === selectedId)
-                  ?.studentCount || 0}
-              </span>{" "}
-              enrolled students.
-              <br />
-              <br />
-              Please reassign or remove students before deactivating.
-            </p>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowWarning(false)}
-                className="px-4 py-2 bg-gray-200 rounded-md"
-              >
-                Okay
-              </button>
-              {/* <button
-                onClick={() => {
-                  toggleStatusDirect(selectedId);
-                  setShowWarning(false);
-                }}
-                className="px-4 py-2 bg-red-500 text-white rounded-md"
-              >
-                Deactivate Anyway
-              </button> */}
-            </div>
-          </div>
+      {/* Empty State */}
+      {courses.length === 0 && !loading && (
+        <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+          <GiBookshelf className="text-6xl text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">No Courses Found</h3>
+          <p className="text-gray-500 mb-6">Get started by adding your first course</p>
+          <button
+            onClick={() => {
+              resetForm();
+              setShowModal(true);
+            }}
+            className="bg-[#2f5d62] text-white px-6 py-3 rounded-lg inline-flex items-center gap-2 hover:bg-[#264b4f] transition"
+          >
+            <FiPlus />
+            <span>Add Your First Course</span>
+          </button>
         </div>
       )}
     </div>

@@ -13,6 +13,7 @@ function Finance() {
 
   const fetchStudentFees = async () => {
     const res = await axios.get("http://localhost:8080/api/student-fees");
+    console.log(res.data);
     setStudentFees(res.data);
   };
 
@@ -84,8 +85,8 @@ function Finance() {
           <tbody>
             {studentFees.map((f) => (
               <tr key={f.id} className="border-b">
-                <td>
-                  {f.student?.firstName} {f.student?.lastName}
+                <td className="py-3">
+                  {f.studentName}
                 </td>
                 <td>₹ {f.totalAmount}</td>
                 <td>₹ {f.amountPaid}</td>

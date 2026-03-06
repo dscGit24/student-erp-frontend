@@ -12,7 +12,7 @@ function StudentDetails() {
     axios
       .get(`http://localhost:8080/api/students/${id}`)
       .then((res) => setStudent(res.data));
-  }, []);
+  }, [id]);
 
   if (!student) return <div>Loading...</div>;
 

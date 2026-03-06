@@ -8,6 +8,8 @@ import Faculty from "./pages/Faculty";
 import Finance from "./pages/Finance";
 import Department from "./pages/Department";
 import Payments from "./pages/Payments";
+import FeeStructure from "./pages/FeeStructure";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   return (
@@ -26,10 +28,12 @@ function App() {
             </ProtectedRoute>
           }
         >
+          <Route index element={<Dashboard />} />
           <Route path="students" element={<Students />} />
           <Route path="courses" element={<Courses />} />
           <Route path="faculty" element={<Faculty />} />
           <Route path="departments" element={<Department />} />
+          <Route path="fee-structures" element={<FeeStructure />} />
           <Route path="finance" element={<Finance />} />
           <Route path="payments" element={<Payments />} />
         </Route>
