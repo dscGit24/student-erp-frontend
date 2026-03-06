@@ -2,6 +2,8 @@ import Sidebar from "../components/Sidebar";
 import { Outlet } from "react-router-dom";
 import Navbar from "../components/Navbar";
 
+
+
 function MainLayout() {
   return (
     <div className="flex h-screen bg-gray-100">
