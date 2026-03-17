@@ -85,7 +85,7 @@ function Finance() {
           <tbody>
             {studentFees.map((f) => (
               <tr key={f.id} className="border-b">
-                <td className="py-3">
+                <td className="py-5">
                   {f.studentName}
                 </td>
                 <td>₹ {f.totalAmount}</td>
@@ -143,7 +143,7 @@ function Finance() {
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id} className="border-b">
-                    <td>{p.receiptNumber}</td>
+                    <td className="py-4">{p.receiptNumber}</td>
                     <td>₹ {p.amountPaid}</td>
                     <td>{p.paymentDate}</td>
                     <td>{p.paymentMode}</td>
@@ -160,7 +160,7 @@ function Finance() {
               </tbody>
             </table>
 
-            <div className="flex justify-end mt-4">
+            <div className="flex justify-end mt-9">
               <button
                 onClick={() => setShowHistory(false)}
                 className="px-4 py-2 bg-gray-200 rounded-md"

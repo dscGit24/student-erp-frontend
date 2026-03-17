@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import { FiEye, FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiCheckCircle, FiXCircle } from "react-icons/fi";
 
 function Students() {
   const [students, setStudents] = useState([]);
@@ -11,21 +10,22 @@ function Students() {
   const [selectedId, setSelectedId] = useState(null);
   const [courses, setCourses] = useState([]);
   const [departments, setDepartments] = useState([]);
+  
+  const [errors, setErrors] = useState({});
 
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
-    enrollmentNumber: "",
-    course: null,
-    department: null,
     phone: "",
     aadharNumber: "",
+    courseId: "",
+    departmentId: "",
     gender: "",
     dateOfBirth: "",
     address: "",
-    active: true,
     photo: "",
+    // active field removed from form - backend handles this
   });
 
   useEffect(() => {
@@ -36,12 +36,12 @@ function Students() {
 
   const fetchCourses = async () => {
     const res = await axios.get("http://localhost:8080/api/courses");
-    setCourses(res.data.filter((c) => c.active)); // optional: only active
+    setCourses(res.data.filter((c) => c.active));
   };
 
   const fetchDepartments = async () => {
     const res = await axios.get("http://localhost:8080/api/departments");
-    setDepartments(res.data.filter((d) => d.active)); // only active
+    setDepartments(res.data.filter((d) => d.active));
   };
 
   const fetchStudents = async () => {
@@ -54,37 +54,154 @@ function Students() {
     fetchStudents();
   };
 
+  // Calculate age from date of birth
+  const calculateAge = (dob) => {
+    const today = new Date();
+    const birthDate = new Date(dob);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    const nameRegex = /^[A-Za-z\s]+$/;
+    if (!form.firstName?.trim()) {
+      newErrors.firstName = "First name is required";
+    } else if (!nameRegex.test(form.firstName)) {
+      newErrors.firstName = "First name must contain only alphabets";
+    }
+
+    if (!form.lastName?.trim()) {
+      newErrors.lastName = "Last name is required";
+    } else if (!nameRegex.test(form.lastName)) {
+      newErrors.lastName = "Last name must contain only alphabets";
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!form.email?.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!emailRegex.test(form.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    const phoneRegex = /^\d{10}$/;
+    if (!form.phone?.trim()) {
+      newErrors.phone = "Phone number is required";
+    } else if (!phoneRegex.test(form.phone)) {
+      newErrors.phone = "Phone number must be exactly 10 digits";
+    }
+
+    const aadharRegex = /^\d{12}$/;
+    if (!form.aadharNumber?.trim()) {
+      newErrors.aadharNumber = "Aadhar number is required";
+    } else if (!aadharRegex.test(form.aadharNumber)) {
+      newErrors.aadharNumber = "Aadhar number must be exactly 12 digits";
+    }
+
+    if (!form.courseId) {
+      newErrors.courseId = "Please select a course";
+    }
+
+    if (!form.departmentId) {
+      newErrors.departmentId = "Please select a department";
+    }
+
+    if (!form.gender) {
+      newErrors.gender = "Please select a gender";
+    }
+
+    // 🔥 FIX: Age validation - minimum 17 years
+    if (!form.dateOfBirth) {
+      newErrors.dateOfBirth = "Date of birth is required";
+    } else {
+      const age = calculateAge(form.dateOfBirth);
+      if (age < 17) {
+        newErrors.dateOfBirth = "Student must be at least 17 years old";
+      } else if (age > 100) {
+        newErrors.dateOfBirth = "Please enter a valid date of birth";
+      }
+    }
+
+    if (!form.address?.trim()) {
+      newErrors.address = "Address is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const payload = {
-      ...form,
-      courseId: form.course ? Number(form.course.id) : 0,
-      departmentId: form.department ? Number(form.department.id) : 0,
-      dateOfBirth: form.dateOfBirth || null,
-    };
-
-    if (isEdit) {
-      await axios.put(
-        `http://localhost:8080/api/students/${selectedId}`,
-        payload,
-        {
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-    } else {
-      console.log(payload);
-      console.log(payload.courseId);
-      console.log(payload.departmentId);
-      await axios.post("http://localhost:8080/api/students", payload, {
-        headers: { "Content-Type": "application/json" },
-      });
+    if (!validateForm()) {
+      return;
     }
 
-    setShowModal(false);
-    setIsEdit(false);
-    setForm({});
-    fetchStudents();
+    const payload = {
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email,
+      phone: form.phone,
+      aadharNumber: form.aadharNumber,
+      departmentId: Number(form.departmentId),
+      courseId: Number(form.courseId),
+      dateOfBirth: form.dateOfBirth,
+      gender: form.gender,
+      address: form.address,
+      photo: form.photo || null,
+    };
+
+    // Note: active status is NOT included in payload
+    // Backend will handle active status automatically
+
+    try {
+      if (isEdit) {
+        await axios.put(
+          `http://localhost:8080/api/students/${selectedId}`,
+          payload,
+          {
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+        alert("Student updated successfully!");
+      } else {
+        await axios.post("http://localhost:8080/api/students", payload, {
+          headers: { "Content-Type": "application/json" },
+        });
+        alert("Student added successfully!");
+      }
+
+      setShowModal(false);
+      setIsEdit(false);
+      resetForm();
+      fetchStudents();
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      alert(error.response?.data?.message || "Error saving student. Please try again.");
+    }
+  };
+
+  const resetForm = () => {
+    setForm({
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      aadharNumber: "",
+      courseId: "",
+      departmentId: "",
+      gender: "",
+      dateOfBirth: "",
+      address: "",
+      photo: "",
+    });
+    setErrors({});
   };
 
   const getInitials = (f, l) =>
@@ -96,13 +213,25 @@ function Students() {
       .includes(search.toLowerCase()),
   );
 
-  const handleToggleConfirm = (student) => {
-    const message = student.active
-      ? "Deactivate this student?"
-      : "Activate this student?";
+  const handleToggleConfirm = (student, action) => {
+    const message = action === 'activate' 
+      ? "Activate this student?" 
+      : "Deactivate this student?";
 
     if (window.confirm(message)) {
       handleToggle(student.id);
+    }
+  };
+
+  const handleInputChange = (field, value) => {
+    if (field === 'phone' || field === 'aadharNumber') {
+      value = value.replace(/\D/g, '');
+    }
+    
+    setForm({ ...form, [field]: value });
+    
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: null });
     }
   };
 
@@ -116,7 +245,7 @@ function Students() {
 
         <button
           onClick={() => {
-            setForm({});
+            resetForm();
             setIsEdit(false);
             setShowModal(true);
           }}
@@ -136,8 +265,8 @@ function Students() {
       </div>
 
       {/* TABLE CARD */}
-      <div className="bg-white rounded-xl shadow-sm p-5">
-        <table className="w-full">
+      <div className="bg-white rounded-xl shadow-sm p-5 overflow-x-auto">
+        <table className="w-full min-w-[1200px]">
           <thead className="text-left text-gray-600 text-sm border-b">
             <tr>
               <th className="py-3">Student</th>
@@ -145,9 +274,9 @@ function Students() {
               <th>Course</th>
               <th>Department</th>
               <th>Phone</th>
-              <th>Aadhar Number</th>
+              <th>Aadhar</th>
               <th>Gender</th>
-              <th>DOB</th>
+              <th>Age</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -156,7 +285,6 @@ function Students() {
           <tbody>
             {filtered.map((s) => (
               <tr key={s.id} className="border-b hover:bg-gray-50 transition">
-                {/* STUDENT CELL */}
                 <td className="py-4">
                   <div className="flex items-center gap-3">
                     {s.photo ? (
@@ -170,7 +298,6 @@ function Students() {
                         {getInitials(s.firstName, s.lastName)}
                       </div>
                     )}
-
                     <div>
                       <div className="font-medium">
                         {s.firstName} {s.lastName}
@@ -186,9 +313,8 @@ function Students() {
                 <td>{s.phone}</td>
                 <td>{s.aadharNumber}</td>
                 <td>{s.gender}</td>
-                <td>{s.dateOfBirth}</td>
+                <td>{s.dateOfBirth ? calculateAge(s.dateOfBirth) : '-'}</td>
 
-                {/* STATUS */}
                 <td>
                   {s.active ? (
                     <span className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-md">
@@ -201,33 +327,49 @@ function Students() {
                   )}
                 </td>
 
-                {/* ACTIONS */}
-                <td className="flex gap-4 text-gray-600 mt-7">
-                  {/* <FiEye
-                    className="cursor-pointer hover:text-blue-600"
-                    onClick={() => navigate(`/dashboard/students/${s.id}`)}
-                  /> */}
+                <td className="flex gap-3 text-gray-600 mt-7">
+                  {/* Edit Icon */}
                   <FiEdit2
-                    className="cursor-pointer hover:text-green-600"
+                    className="cursor-pointer hover:text-green-600 text-lg"
+                    title="Edit Student"
                     onClick={() => {
                       setForm({
-                        ...s,
-                        course: s.course ? { id: s.course.id } : null,
+                        firstName: s.firstName || "",
+                        lastName: s.lastName || "",
+                        email: s.email || "",
+                        phone: s.phone || "",
+                        aadharNumber: s.aadharNumber || "",
+                        courseId: s.courseId || "",
+                        departmentId: s.departmentId || "",
+                        gender: s.gender || "",
                         dateOfBirth: s.dateOfBirth
                           ? s.dateOfBirth.substring(0, 10)
                           : "",
-                      }); // clone selected student
-                      setSelectedId(s.id); // store id
-                      setIsEdit(true); // enable edit mode
-                      setShowModal(true); // open modal
+                        address: s.address || "",
+                        photo: s.photo || "",
+                        // active field NOT included in form
+                      });
+                      setSelectedId(s.id);
+                      setIsEdit(true);
+                      setShowModal(true);
+                      setErrors({});
                     }}
                   />
-                  <FiTrash2
-                    className={`cursor-pointer ${
-                      s.active ? "text-green-600" : "text-red-600"
-                    }`}
-                    onClick={() => handleToggleConfirm(s)}
-                  />
+                  
+                  {/* Activate/Deactivate Icons */}
+                  {s.active ? (
+                    <FiXCircle
+                      className="cursor-pointer hover:text-orange-600 text-lg"
+                      title="Deactivate Student"
+                      onClick={() => handleToggleConfirm(s, 'deactivate')}
+                    />
+                  ) : (
+                    <FiCheckCircle
+                      className="cursor-pointer hover:text-green-600 text-lg"
+                      title="Activate Student"
+                      onClick={() => handleToggleConfirm(s, 'activate')}
+                    />
+                  )}
                 </td>
               </tr>
             ))}
@@ -235,13 +377,15 @@ function Students() {
         </table>
       </div>
 
-      {/* ADD STUDENT MODAL */}
+      {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#cfe6ea] w-[600px] rounded-xl shadow-xl p-6 relative">
-            {/* Close button */}
+          <div className="bg-[#cfe6ea] w-[600px] rounded-xl shadow-xl p-6 relative max-h-[90vh] overflow-y-auto">
             <button
-              onClick={() => setShowModal(false)}
+              onClick={() => {
+                setShowModal(false);
+                resetForm();
+              }}
               className="absolute top-4 right-5 text-gray-600 text-lg"
             >
               ✕
@@ -254,58 +398,86 @@ function Students() {
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
               {/* First Name */}
               <div>
-                <label className="text-sm">First Name</label>
+                <label className="text-sm">First Name *</label>
                 <input
                   type="text"
-                  placeholder="First Name"
-                  className="w-full p-2 mt-1 rounded-md border"
-                  value={form.firstName || ""}
-                  onChange={(e) =>
-                    setForm({ ...form, firstName: e.target.value })
-                  }
+                  className={`w-full p-2 mt-1 rounded-md border ${
+                    errors.firstName ? 'border-red-500' : ''
+                  }`}
+                  value={form.firstName}
+                  onChange={(e) => handleInputChange('firstName', e.target.value)}
                 />
+                {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
               </div>
 
               {/* Last Name */}
               <div>
-                <label className="text-sm">Last Name</label>
+                <label className="text-sm">Last Name *</label>
                 <input
                   type="text"
-                  placeholder="Last Name"
-                  className="w-full p-2 mt-1 rounded-md border"
-                  value={form.lastName || ""}
-                  onChange={(e) =>
-                    setForm({ ...form, lastName: e.target.value })
-                  }
+                  className={`w-full p-2 mt-1 rounded-md border ${
+                    errors.lastName ? 'border-red-500' : ''
+                  }`}
+                  value={form.lastName}
+                  onChange={(e) => handleInputChange('lastName', e.target.value)}
                 />
+                {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
               </div>
 
               {/* Email */}
               <div>
-                <label className="text-sm">Email</label>
+                <label className="text-sm">Email *</label>
                 <input
                   type="email"
-                  placeholder="Email"
-                  className="w-full p-2 mt-1 rounded-md border"
-                  value={form.email || ""}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className={`w-full p-2 mt-1 rounded-md border ${
+                    errors.email ? 'border-red-500' : ''
+                  }`}
+                  value={form.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
                 />
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="text-sm">Phone (10 digits) *</label>
+                <input
+                  type="text"
+                  maxLength="10"
+                  className={`w-full p-2 mt-1 rounded-md border ${
+                    errors.phone ? 'border-red-500' : ''
+                  }`}
+                  value={form.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                />
+                {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+              </div>
+
+              {/* Aadhar */}
+              <div>
+                <label className="text-sm">Aadhar (12 digits) *</label>
+                <input
+                  type="text"
+                  maxLength="12"
+                  className={`w-full p-2 mt-1 rounded-md border ${
+                    errors.aadharNumber ? 'border-red-500' : ''
+                  }`}
+                  value={form.aadharNumber}
+                  onChange={(e) => handleInputChange('aadharNumber', e.target.value)}
+                />
+                {errors.aadharNumber && <p className="text-red-500 text-xs mt-1">{errors.aadharNumber}</p>}
               </div>
 
               {/* Course */}
               <div>
-                <label className="text-sm">Course</label>
+                <label className="text-sm">Course *</label>
                 <select
-                  className="w-full p-2 mt-1 rounded-md border"
-                  value={form.course?.id || ""}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      course: { id: e.target.value },
-                    })
-                  }
+                  className={`w-full p-2 mt-1 rounded-md border ${
+                    errors.courseId ? 'border-red-500' : ''
+                  }`}
+                  value={form.courseId}
+                  onChange={(e) => handleInputChange('courseId', e.target.value)}
                 >
-                  {/* {console.log(form.course)} */}
                   <option value="">Select Course</option>
                   {courses.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -313,22 +485,19 @@ function Students() {
                     </option>
                   ))}
                 </select>
+                {errors.courseId && <p className="text-red-500 text-xs mt-1">{errors.courseId}</p>}
               </div>
 
               {/* Department */}
               <div>
-                <label className="text-sm">Department</label>
+                <label className="text-sm">Department *</label>
                 <select
-                  className="w-full p-2 mt-1 rounded-md border"
-                  value={form.department?.id || ""}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      department: { id: e.target.value },
-                    })
-                  }
+                  className={`w-full p-2 mt-1 rounded-md border ${
+                    errors.departmentId ? 'border-red-500' : ''
+                  }`}
+                  value={form.departmentId}
+                  onChange={(e) => handleInputChange('departmentId', e.target.value)}
                 >
-                  {/* {console.log(form.department)} */}
                   <option value="">Select Department</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>
@@ -336,106 +505,82 @@ function Students() {
                     </option>
                   ))}
                 </select>
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="text-sm">Phone</label>
-                <input
-                  type="number"
-                  placeholder="Phone"
-                  className="w-full p-2 mt-1 rounded-md border"
-                  value={form.phone || ""}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-
-              {/* Aadhar Number */}
-              <div>
-                <label className="text-sm">Aadhar Number</label>
-                <input
-                  type="number"
-                  placeholder="Aadhar Number"
-                  className="w-full p-2 mt-1 rounded-md border"
-                  value={form.aadharNumber || ""}
-                  onChange={(e) =>
-                    setForm({ ...form, aadharNumber: e.target.value })
-                  }
-                />
+                {errors.departmentId && <p className="text-red-500 text-xs mt-1">{errors.departmentId}</p>}
               </div>
 
               {/* Gender */}
               <div>
-                <label className="text-sm">Gender</label>
+                <label className="text-sm">Gender *</label>
                 <select
-                  className="w-full p-2 mt-1 rounded-md border"
-                  value={form.gender || ""}
-                  onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                  className={`w-full p-2 mt-1 rounded-md border ${
+                    errors.gender ? 'border-red-500' : ''
+                  }`}
+                  value={form.gender}
+                  onChange={(e) => handleInputChange('gender', e.target.value)}
                 >
-                  <option>Select Gender</option>
-                  <option>Male</option>
-                  <option>Female</option>
-                  <option>Other</option>
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
                 </select>
+                {errors.gender && <p className="text-red-500 text-xs mt-1">{errors.gender}</p>}
               </div>
 
-              {/* DOB */}
+              {/* DOB - with 17+ validation */}
               <div>
-                <label className="text-sm">Date of Birth</label>
+                <label className="text-sm">Date of Birth *</label>
                 <input
                   type="date"
-                  placeholder="Date of Birth"
-                  className="w-full p-2 mt-1 rounded-md border"
-                  value={form.dateOfBirth || ""}
-                  onChange={(e) =>
-                    setForm({ ...form, dateOfBirth: e.target.value })
-                  }
+                  className={`w-full p-2 mt-1 rounded-md border ${
+                    errors.dateOfBirth ? 'border-red-500' : ''
+                  }`}
+                  value={form.dateOfBirth}
+                  onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 17)).toISOString().split('T')[0]}
                 />
+                {errors.dateOfBirth && <p className="text-red-500 text-xs mt-1">{errors.dateOfBirth}</p>}
+                {form.dateOfBirth && (
+                  <p className="text-gray-500 text-xs mt-1">
+                    Age: {calculateAge(form.dateOfBirth)} years
+                  </p>
+                )}
               </div>
 
-              {/* Status */}
-              <div>
-                <label className="text-sm">Status</label>
-                <select
-                  className="w-full p-2 mt-1 rounded-md border"
-                  value={form.active ? "Active" : "Inactive"}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      active: e.target.value === "Active",
-                    })
-                  }
-                >
-                  <option>Active</option>
-                  <option>Inactive</option>
-                </select>
-              </div>
+              {/* Status Field - COMPLETELY REMOVED */}
+              {/* No status dropdown in edit mode anymore */}
 
-              {/* Address (full width) */}
+              {/* Address - full width */}
               <div className="col-span-2">
-                <label className="text-sm">Address</label>
+                <label className="text-sm">Address *</label>
                 <input
                   type="text"
-                  placeholder="Address"
-                  className="w-full p-2 mt-1 rounded-md border"
-                  value={form.address || ""}
-                  onChange={(e) =>
-                    setForm({ ...form, address: e.target.value })
-                  }
+                  className={`w-full p-2 mt-1 rounded-md border ${
+                    errors.address ? 'border-red-500' : ''
+                  }`}
+                  value={form.address}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
                 />
+                {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
               </div>
 
               {/* Photo */}
               <div className="col-span-2">
+                <label className="text-sm">Photo</label>
                 <input
                   type="file"
+                  accept="image/*"
+                  className="w-full p-2 mt-1 rounded-md border"
                   onChange={(e) => {
                     const file = e.target.files[0];
                     if (!file) return;
 
+                    if (file.size > 5 * 1024 * 1024) {
+                      alert("File size must be less than 5MB");
+                      return;
+                    }
+
                     const reader = new FileReader();
                     reader.readAsDataURL(file);
-
                     reader.onload = () => {
                       setForm({
                         ...form,
@@ -444,7 +589,6 @@ function Students() {
                     };
                   }}
                 />
-
                 {form.photo && (
                   <img
                     src={`data:image/jpeg;base64,${form.photo}`}
@@ -458,13 +602,18 @@ function Students() {
               <div className="col-span-2 flex justify-end gap-3 mt-4">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded-md border"
+                  onClick={() => {
+                    setShowModal(false);
+                    resetForm();
+                  }}
+                  className="px-4 py-2 rounded-md border hover:bg-gray-100"
                 >
                   Cancel
                 </button>
-
-                <button className="bg-[#2f5d62] text-white px-5 py-2 rounded-md">
+                <button
+                  type="submit"
+                  className="bg-[#2f5d62] text-white px-5 py-2 rounded-md hover:bg-[#264b4f]"
+                >
                   {isEdit ? "Update Student" : "Add Student"}
                 </button>
               </div>

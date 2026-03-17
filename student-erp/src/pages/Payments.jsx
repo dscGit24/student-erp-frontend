@@ -5,28 +5,25 @@ import {
   FiUser, 
   FiCreditCard, 
   FiSmartphone,
-  FiHome,
   FiInfo,
   FiCheckCircle,
   FiAlertCircle,
-  FiArrowRight
+  FiSearch,
+  FiX
 } from "react-icons/fi";
 import { GiBank } from "react-icons/gi";
 import { MdPayment, MdOutlinePayment } from "react-icons/md";
 
 function Payments() {
   const [studentFees, setStudentFees] = useState([]);
+  const [filteredStudents, setFilteredStudents] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedFee, setSelectedFee] = useState("");
   const [amount, setAmount] = useState("");
   const [mode, setMode] = useState("CASH");
-  const [transactionId, setTransactionId] = useState("");
   const [message, setMessage] = useState({ type: '', text: '' });
   const [loading, setLoading] = useState(false);
   const [selectedStudentDetails, setSelectedStudentDetails] = useState(null);
-
-  useEffect(() => {
-    fetchFees();
-  }, []);
 
   const fetchFees = async () => {
     try {
@@ -34,18 +31,39 @@ function Payments() {
       // Only show students with balance due
       const feesWithBalance = res.data.filter(f => f.balanceAmount > 0);
       setStudentFees(feesWithBalance);
+      setFilteredStudents(feesWithBalance);
     } catch (error) {
       console.error("Error fetching fees:", error);
       setMessage({ type: 'error', text: 'Failed to load student fees' });
     }
   };
 
+  useEffect(() => {
+    fetchFees();
+  }, []);
+
+  // Filter students based on search term only
+  useEffect(() => {
+    let filtered = studentFees;
+
+    // Apply search term
+    if (searchTerm.trim() !== "") {
+      filtered = filtered.filter(f => 
+        f.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.student?.enrollmentNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.courseName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.departmentName?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    setFilteredStudents(filtered);
+  }, [searchTerm, studentFees]);
+
   const handleStudentSelect = (feeId) => {
     setSelectedFee(feeId);
     const student = studentFees.find(f => f.id === Number(feeId));
     setSelectedStudentDetails(student);
     setAmount("");
-    setTransactionId("");
   };
 
   const handlePayment = async (e) => {
@@ -67,12 +85,6 @@ function Payments() {
       setMessage({ type: 'error', text: `Amount exceeds balance due (₹${selectedStudentDetails.balanceAmount.toLocaleString()})` });
       return;
     }
-    
-    // Validate transaction ID for non-cash payments
-    if (mode !== "CASH" && !transactionId.trim()) {
-      setMessage({ type: 'error', text: 'Please enter transaction ID' });
-      return;
-    }
 
     setLoading(true);
     setMessage({ type: '', text: '' });
@@ -83,11 +95,6 @@ function Payments() {
         paymentMode: mode,
         active: true,
       };
-      
-      // Add transaction ID for non-cash payments
-      if (mode !== "CASH") {
-        payload.transactionId = transactionId;
-      }
 
       await axios.post(
         `http://localhost:8080/api/payments/${selectedFee}`,
@@ -96,7 +103,6 @@ function Payments() {
       
       setMessage({ type: 'success', text: 'Payment recorded successfully!' });
       setAmount("");
-      setTransactionId("");
       setSelectedFee("");
       setSelectedStudentDetails(null);
       fetchFees(); // Refresh to show updated balances
@@ -109,6 +115,10 @@ function Payments() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   // Get payment mode icon
@@ -125,27 +135,121 @@ function Payments() {
   return (
     <div className="bg-[#e8f1f3] min-h-screen p-6">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-semibold">Payments</h1>
+        <p className="text-sm text-gray-500 mt-1">Record and manage student fee payments</p>
       </div>
 
-      <div className="max-w-2xl mx-auto">
-        {/* Payment Card */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          {/* Card Header */}
+      {/* Search Bar */}
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div className="relative">
+          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name, enrollment, department or course..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62] focus:border-transparent"
+          />
+          {searchTerm && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <FiX />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Results Count */}
+      <div className="mb-4 text-sm text-gray-500">
+        {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''} with pending fees
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Student Selection Card */}
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden h-fit">
+          <div className="bg-[#2f5d62] px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-lg">
+                <FiUser className="text-2xl text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-white">Select Student</h2>
+                <p className="text-white/80 text-sm mt-0.5">Choose a student to make payment</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 max-h-96 overflow-y-auto">
+            {filteredStudents.length > 0 ? (
+              <div className="space-y-2">
+                {filteredStudents.map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => handleStudentSelect(f.id)}
+                    className={`w-full text-left p-4 rounded-lg border transition ${
+                      selectedFee === String(f.id)
+                        ? 'bg-[#2f5d62] text-white border-[#2f5d62]'
+                        : 'hover:bg-gray-50 border-gray-200'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium">{f.studentName}</h3>
+                        <p className={`text-sm mt-1 ${
+                          selectedFee === String(f.id) ? 'text-white/80' : 'text-gray-500'
+                        }`}>
+                          {f.courseName} • {f.departmentName}
+                        </p>
+                        {f.student?.enrollmentNumber && (
+                          <p className={`text-xs mt-1 ${
+                            selectedFee === String(f.id) ? 'text-white/60' : 'text-gray-400'
+                          }`}>
+                            {f.student.enrollmentNumber}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className={`font-bold ${
+                          selectedFee === String(f.id) ? 'text-white' : 'text-orange-600'
+                        }`}>
+                          ₹{f.balanceAmount?.toLocaleString()}
+                        </span>
+                        <p className={`text-xs ${
+                          selectedFee === String(f.id) ? 'text-white/60' : 'text-gray-400'
+                        }`}>
+                          Due
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <FiUser className="text-4xl mx-auto mb-2 text-gray-300" />
+                <p>No students found with pending fees</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Payment Form Card */}
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden h-fit">
           <div className="bg-[#2f5d62] px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 p-2 rounded-lg">
                 <MdOutlinePayment className="text-2xl text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-white">Add Payment</h2>
-                <p className="text-white/80 text-sm mt-0.5">Record a new payment transaction</p>
+                <h2 className="text-xl font-semibold text-white">Make Payment</h2>
+                <p className="text-white/80 text-sm mt-0.5">Complete the payment transaction</p>
               </div>
             </div>
           </div>
 
-          {/* Payment Form */}
           <form onSubmit={handlePayment} className="p-6 space-y-6">
             {/* Message Display */}
             {message.text && (
@@ -161,29 +265,6 @@ function Payments() {
                 <span className="text-sm">{message.text}</span>
               </div>
             )}
-
-            {/* Student Selection */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Select Student <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <FiUser className="absolute left-3 top-3.5 text-gray-400" />
-                <select
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62] focus:border-transparent bg-white appearance-none cursor-pointer"
-                  value={selectedFee}
-                  onChange={(e) => handleStudentSelect(e.target.value)}
-                  required
-                >
-                  <option value="">-- Select a student --</option>
-                  {studentFees.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.studentName} - ₹{f.balanceAmount?.toLocaleString()} due
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
 
             {/* Student Details Card (shown when student selected) */}
             {selectedStudentDetails && (
@@ -228,6 +309,7 @@ function Payments() {
                   min="1"
                   step="1"
                   required
+                  disabled={!selectedStudentDetails}
                 />
               </div>
               {selectedStudentDetails && Number(amount) > selectedStudentDetails.balanceAmount && (
@@ -247,14 +329,14 @@ function Payments() {
                   <button
                     key={paymentMode}
                     type="button"
-                    onClick={() => {
-                      setMode(paymentMode);
-                      setTransactionId("");
-                    }}
+                    onClick={() => setMode(paymentMode)}
+                    disabled={!selectedStudentDetails}
                     className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition ${
-                      mode === paymentMode
+                      mode === paymentMode && selectedStudentDetails
                         ? 'bg-[#2f5d62] text-white border-[#2f5d62]'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        : !selectedStudentDetails
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
                   >
                     {getModeIcon(paymentMode)}
@@ -264,30 +346,14 @@ function Payments() {
               </div>
             </div>
 
-            {/* Transaction ID (for non-cash payments) */}
-            {mode !== "CASH" && (
-              <div className="animate-fadeIn">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  {mode === "UPI" ? "UPI Reference / Transaction ID" : "Transaction ID"} 
-                  <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder={`Enter ${mode} transaction ID`}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f5d62] focus:border-transparent"
-                  value={transactionId}
-                  onChange={(e) => setTransactionId(e.target.value)}
-                  required
-                />
-              </div>
-            )}
-
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !selectedStudentDetails}
               className={`w-full bg-[#2f5d62] text-white py-4 rounded-lg font-semibold text-lg transition flex items-center justify-center gap-2 ${
-                loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#264b4f] hover:shadow-lg'
+                loading || !selectedStudentDetails
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:bg-[#264b4f] hover:shadow-lg'
               }`}
             >
               {loading ? (
@@ -304,57 +370,33 @@ function Payments() {
             </button>
           </form>
         </div>
-
-        {/* Payment Tips Card */}
-        <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-          <div className="flex items-start gap-3">
-            <div className="bg-blue-100 p-2 rounded-full">
-              <FiInfo className="text-blue-600 text-lg" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-800 mb-2">Payment Tips</h3>
-              <ul className="space-y-2">
-                <li className="text-xs text-gray-600 flex items-start gap-2">
-                  <span className="text-blue-500 font-bold">•</span>
-                  <span>Amount cannot exceed the balance due</span>
-                </li>
-                <li className="text-xs text-gray-600 flex items-start gap-2">
-                  <span className="text-blue-500 font-bold">•</span>
-                  <span>For UPI/CARD/BANK, transaction ID is required</span>
-                </li>
-                <li className="text-xs text-gray-600 flex items-start gap-2">
-                  <span className="text-blue-500 font-bold">•</span>
-                  <span>Receipt will be generated automatically after payment</span>
-                </li>
-                <li className="text-xs text-gray-600 flex items-start gap-2">
-                  <span className="text-blue-500 font-bold">•</span>
-                  <span>You can view payment history in Finance dashboard</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Stats (optional) */}
-        {studentFees.length > 0 && (
-          <div className="mt-4 text-xs text-gray-500 text-center">
-            <span className="bg-white px-4 py-2 rounded-full shadow-sm">
-              {studentFees.length} student{studentFees.length !== 1 ? 's' : ''} with pending fees
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* Add animation keyframes to your CSS */}
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
-      `}</style>
+      {/* Payment Tips Card */}
+      <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+        <div className="flex items-start gap-3">
+          <div className="bg-blue-100 p-2 rounded-full">
+            <FiInfo className="text-blue-600 text-lg" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800 mb-2">Payment Tips</h3>
+            <ul className="space-y-2">
+              <li className="text-xs text-gray-600 flex items-start gap-2">
+                <span className="text-blue-500 font-bold">•</span>
+                <span>Amount cannot exceed the balance due</span>
+              </li>
+              <li className="text-xs text-gray-600 flex items-start gap-2">
+                <span className="text-blue-500 font-bold">•</span>
+                <span>Receipt will be generated automatically after payment</span>
+              </li>
+              <li className="text-xs text-gray-600 flex items-start gap-2">
+                <span className="text-blue-500 font-bold">•</span>
+                <span>You can view payment history in Finance dashboard</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

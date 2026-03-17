@@ -175,11 +175,11 @@ function Dashboard() {
           </div>
           
           {/* Total Pending Amount */}
-          <div className="bg-orange-50 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+          {/*<div className="bg-orange-50 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
             <p className="text-xs text-orange-600 mb-1">Total Pending</p>
             <p className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600">₹{stats.pendingFees.toLocaleString()}</p>
             <p className="text-xs text-gray-500 mt-1">from {stats.totalStudents} students</p>
-          </div>
+          </div>*/}
 
           {/* Payment List */}
           <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-80 overflow-y-auto pr-1">
